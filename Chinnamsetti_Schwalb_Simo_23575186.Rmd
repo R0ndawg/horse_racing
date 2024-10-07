@@ -9,9 +9,70 @@ output: word_document
 WIP
 
 ```{r}
-x <- 1:20
-x
+# Import the Data from CSV Files
+df1 <- read.csv("Lingfield_AW_2014_2024_flat.csv")
+df2 <- read.csv("Lingfield_AW_2014_2024_jumps.csv")
+df3 <- read.csv("Lingfield_turf_2014_2024_flat.csv")
+df4 <- read.csv("Lingfield_turf_2014_2024_jumps.csv")
+
+df.horse <- rbind(df1, df2, df3, df4)
 ```
+
+- gotta diminish dataset size to: 
+- max 10^5 = 100,000 rows
+- 10-20 predictors
+
+Keep the following columns based on domain knowledge and careful inspection of the dataset:
+
+```{r}
+df.horse <- subset(df.horse, select=c(date, race_name,type, class, dist_m, going, ran, pos, draw, horse, age, sex, lbs, hg, secs, jockey, trainer, prize))
+```
+
+Create a new column 'won', assigning 1 if 'pos' is 1, otherwise 0
+
+```{r}
+df.horse$won <- ifelse(df.horse$pos == 1, 1, 0)
+# Check the first few rows to ensure the new column has been added
+head(df.horse[c("pos","won")],50)
+# => looks good
+```
+
+Check for missing values. NAs and empty strings
+```{r}
+colSums(is.na(df.horse) | df.horse == "")
+```
+
+```{r}
+# let's drop hg and prize because most of them are missing
+# but let's keep draw because AFAIK it might influence outcome
+# keep it in mind that it only exists for Flat course type
+
+df.horse <- subset(df.horse, select=-c(hg,prize))
+```
+Check datatypes. 
+```{r}
+str(df.horse)
+```
+Some variable types should be modified for better analysis. 
+
+Convert 'date' column to date format
+```{r}
+df.horse$date <- as.Date(as.character(df.horse$date), format = "%Y-%m-%d")
+```
+
+```{r}
+# Convert all character columns to factors
+df.horse[sapply(df.horse, is.character)] <- lapply(df.horse[sapply(df.horse, is.character)], as.factor)
+# df.horse$race_name <- as.character(df.horse$race_name)
+df.horse$pos <- as.integer(as.character(df.horse$pos))
+# Convert secs to numeric after handling non-numeric values
+df.horse$secs <- as.numeric(as.character(df.horse$secs))
+```
+
+NEXT: 
+- sample
+- log transform
+
 
 # 2) Linear Model
 Placeholder
