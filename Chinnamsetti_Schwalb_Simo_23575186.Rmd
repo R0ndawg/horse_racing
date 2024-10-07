@@ -1,0 +1,38 @@
+---
+title: "Horse Racing Data Analysis Project - ML1 HS24"
+author: "sindhu.chinnamsetti@stud.hslu.ch, ronald.schwalb@stud.hslu.ch, eniko.simo@stud.hslu.ch"
+date: "October 7th, 2024"
+output: word_document
+---
+
+# 1) Data Cleaning
+WIP
+
+```{r}
+x <- 1:20
+x
+```
+
+# 2) Linear Model
+Placeholder
+
+# 3) Generalised Linear Model - Poisson
+Placeholder
+
+# 4) Generalised Linear Model - Binomial
+WIP 
+
+# 5) Generalised Additive Model
+Placeholder
+
+# 6) Neural Network
+Placeholder
+
+# 7) Support Vector Machine
+Placeholder
+
+# 8) Use of Generative AI
+Placeholder
+
+# 9) Conclusion
+Placeholder
