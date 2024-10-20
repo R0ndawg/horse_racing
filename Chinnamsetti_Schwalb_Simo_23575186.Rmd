@@ -1,12 +1,17 @@
 ---
 title: "Horse Racing Data Analysis Project - ML1 HS24"
 author: "sindhu.chinnamsetti@stud.hslu.ch, ronald.schwalb@stud.hslu.ch, eniko.simo@stud.hslu.ch"
-date: "October 7th, 2024"
-output: word_document
+date: "October 13th, 2024"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
 ---
 
 # 1) Data Cleaning
-WIP
+<span style="color:red">WIP</span>
+
 
 ```{r}
 # Import the Data from CSV Files
@@ -62,18 +67,62 @@ df.horse$date <- as.Date(as.character(df.horse$date), format = "%Y-%m-%d")
 
 ```{r}
 # Convert all character columns to factors
-df.horse[sapply(df.horse, is.character)] <- lapply(df.horse[sapply(df.horse, is.character)], as.factor)
+#df.horse[sapply(df.horse, is.character)] <- lapply(df.horse[sapply(df.horse, is.character)], as.factor)
 # df.horse$race_name <- as.character(df.horse$race_name)
-df.horse$pos <- as.integer(as.character(df.horse$pos))
-# Convert secs to numeric after handling non-numeric values
-df.horse$secs <- as.numeric(as.character(df.horse$secs))
+#df.horse$pos <- as.integer(as.character(df.horse$pos))
+#df.horse$pos <- as.integer(df.horse$pos)
+# Convert secs to numeric 
+#df.horse$secs <- as.numeric(as.character(df.horse$secs))
+```
+```{r}
+# check which values of pos can't be converted to integers
+df.horse$pos_num <- as.integer(df.horse$pos)
+df.horse[is.na(as.integer(df.horse$pos_num)), ]$pos
 ```
 
+Meaning of the abbreviations:
+
+**UR** (Unseated Rider): The jockey fell off during the race.
+**PU** (Pulled Up): The horse was stopped by the jockey during the race due to an issue, usually to prevent injury.
+**F** (Fell): The horse fell during the race.
+**DSQ** (Disqualified): The horse was disqualified, usually for breaking rules like interference.
+**RR** (Refused to Race): The horse refused to start the race.
+**BD** (Brought Down): The horse was knocked down by another horse, usually in a fall.
+Each of these indicates why a horse didn't complete the race as expected. Thus, these rows can be removed. 
+
 NEXT: 
-- sample
-- log transform
+- do the same for secs
+- convert pos into ordinal?
+ 
 
+```{r}
+# check the same for secs
+df.horse$secs_num <- as.numeric(df.horse$secs)
+df.horse[is.na(as.integer(df.horse$secs_num)), ]$secs
+```
 
+Log-transform “amounts” -> at prof's recommendation
+In our dataset, these variables can be considered amounts:
+- dist_m
+- lbs
+- secs
+```{r}
+# Log-transforming 'dist_m', 'lbs', and 'secs'
+df.horse$log_dist_m <- log(df.horse$dist_m)
+df.horse$log_lbs <- log(df.horse$lbs)
+df.horse$log_secs <- log(df.horse$secs)
+```
+
+HOW TO VISUALIZE THE LOG AMOUNT TO COMPARE THEM WITH ORIGINAL??
+
+Running the models take forever with our current dataset, so create a randomized sample with 10% of the data so that we can see results faster at this early stage of the project. 
+
+```{r}
+# Sample 10% of the dataset for testing
+df.horse_sample <- df.horse[sample(nrow(df.horse), 0.1 * nrow(df.horse)), ]
+
+dim(df.horse_sample)
+```
 # 2) Linear Model
 Placeholder
 
@@ -82,6 +131,18 @@ Placeholder
 
 # 4) Generalised Linear Model - Binomial
 WIP 
+```{r}
+glm.horse_sample <- glm(won ~ type + log_dist_m + going + age + sex + log_lbs + log_secs, 
+                data = df.horse_sample,
+                family = "binomial")
+summary(glm.horse_sample)
+
+```
+<span style="color:red";>HOW TO INTERPRET ALL THESE FACTOR VARIABLES?
+SHOULD THEY ALL BE FACTORS OR IS THERE A BETTER WAY?
+I DON'T REMEMBER SO MANY FACTORS FROM THE LECTURES. </span>
+
+
 
 # 5) Generalised Additive Model
 Placeholder
