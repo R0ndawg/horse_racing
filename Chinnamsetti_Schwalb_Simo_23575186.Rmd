@@ -76,8 +76,7 @@ df.horse$date <- as.Date(as.character(df.horse$date), format = "%Y-%m-%d")
 ```
 ```{r}
 # check which values of pos can't be converted to integers
-df.horse$pos_num <- as.integer(df.horse$pos)
-df.horse[is.na(as.integer(df.horse$pos_num)), ]$pos
+unique(df.horse$pos)
 ```
 
 Meaning of the abbreviations:
@@ -88,7 +87,21 @@ Meaning of the abbreviations:
 **DSQ** (Disqualified): The horse was disqualified, usually for breaking rules like interference.
 **RR** (Refused to Race): The horse refused to start the race.
 **BD** (Brought Down): The horse was knocked down by another horse, usually in a fall.
+**RO** (Ran Out): The horse ran off the course, failing to follow the designated track.
+**SU** (Slipped Up): The horse slipped and fell during the race, usually on a turn or due to ground conditions.
+**REF** (Refused): The horse refused to jump a fence or hurdle, or it refused to continue racing at some point.
 Each of these indicates why a horse didn't complete the race as expected. Thus, these rows can be removed. 
+
+Remove rows where pos is not a number:
+```{r}
+df.horse <- df.horse[!df.horse$pos %in% c("UR", "PU", "F", "DSQ", "RR", "BD", "RO", "SU", "REF"), ]
+```
+
+See if it worked:
+
+```{r}
+unique(df.horse$pos)
+```
 
 NEXT: 
 - do the same for secs
@@ -100,6 +113,37 @@ NEXT:
 df.horse$secs_num <- as.numeric(df.horse$secs)
 df.horse[is.na(as.integer(df.horse$secs_num)), ]$secs
 ```
+```{r}
+# see rows where secs = "-"
+df.horse[df.horse$secs=="-",]
+```
+This looks like a legit entry but since we have no time data for it, let's remove it. 
+
+```{r}
+df.horse <- df.horse[df.horse$secs != "-", ]
+```
+
+Now convert them to numeric variables.
+
+```{r}
+df.horse$pos <- as.integer(df.horse$pos)
+df.horse$secs <- as.numeric(df.horse$secs)
+```
+
+Convert all characters to factors:
+```{r}
+# Convert all character columns to factors
+df.horse[sapply(df.horse, is.character)] <- lapply(df.horse[sapply(df.horse, is.character)], as.factor)
+
+str(df.horse)
+
+# remove helper variable, won't need it anymore
+df.horse <- subset(df.horse, select=-secs_num)
+# check if it worked
+colnames(df.horse)
+```
+
+
 
 Log-transform “amounts” -> at prof's recommendation
 In our dataset, these variables can be considered amounts:
