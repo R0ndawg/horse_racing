@@ -65,15 +65,7 @@ Convert 'date' column to date format
 df.horse$date <- as.Date(as.character(df.horse$date), format = "%Y-%m-%d")
 ```
 
-```{r}
-# Convert all character columns to factors
-#df.horse[sapply(df.horse, is.character)] <- lapply(df.horse[sapply(df.horse, is.character)], as.factor)
-# df.horse$race_name <- as.character(df.horse$race_name)
-#df.horse$pos <- as.integer(as.character(df.horse$pos))
-#df.horse$pos <- as.integer(df.horse$pos)
-# Convert secs to numeric 
-#df.horse$secs <- as.numeric(as.character(df.horse$secs))
-```
+
 ```{r}
 # check which values of pos can't be converted to integers
 unique(df.horse$pos)
@@ -102,10 +94,6 @@ See if it worked:
 ```{r}
 unique(df.horse$pos)
 ```
-
-NEXT: 
-- do the same for secs
-- convert pos into ordinal?
  
 
 ```{r}
@@ -142,7 +130,8 @@ df.horse <- subset(df.horse, select=-secs_num)
 # check if it worked
 colnames(df.horse)
 ```
-
+- SHOULD "WON" BE TURNED INTO A BOOLEAN? 
+- SHOULD "POS" BE AN ORDERED FACTOR? (ChatGPT says no, but prof said we should have all var types?)
 
 
 Log-transform “amounts” -> at prof's recommendation
@@ -157,9 +146,49 @@ df.horse$log_lbs <- log(df.horse$lbs)
 df.horse$log_secs <- log(df.horse$secs)
 ```
 
-HOW TO VISUALIZE THE LOG AMOUNT TO COMPARE THEM WITH ORIGINAL??
+Visualize original variable + log to see if distribution is more balanced.
+```{r}
+par(mfrow = c(3, 2))
+
+hist(df.horse$dist_m)
+hist(df.horse$log_dist_m)
+hist(df.horse$lbs)
+hist(df.horse$log_lbs)
+hist(df.horse$secs)
+hist(df.horse$log_secs)
+
+```
+TODO: MAKE THIS PRETTIER AND DELETE THE BELOW
+
+```{r}
+hist(df.horse$dist_m)
+```
+
+```{r}
+hist(df.horse$log_dist_m)
+```
+LOOKS WEIRD ...
+
+```{r}
+hist(df.horse$lbs)
+```
+```{r}
+hist(df.horse$log_lbs)
+```
+```{r}
+hist(df.horse$secs)
+```
+```{r}
+hist(df.horse$log_secs)
+```
+I DON'T KNOW... LOGS DON'T LOOK A WHOLE LOT MORE BALANCED THAN ORIGINAL VARIABLES. 
+WHAT SHOULD I SEE HERE?? 
+
+
 
 Running the models take forever with our current dataset, so create a randomized sample with 10% of the data so that we can see results faster at this early stage of the project. 
+
+TODO: USE STRATIFIED SAMPLING!
 
 ```{r}
 # Sample 10% of the dataset for testing
