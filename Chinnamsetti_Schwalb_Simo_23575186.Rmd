@@ -124,14 +124,16 @@ Convert all characters to factors:
 df.horse[sapply(df.horse, is.character)] <- lapply(df.horse[sapply(df.horse, is.character)], as.factor)
 
 str(df.horse)
-
+```
+```{r}
 # remove helper variable, won't need it anymore
 df.horse <- subset(df.horse, select=-secs_num)
 # check if it worked
 colnames(df.horse)
 ```
+
 - SHOULD "WON" BE TURNED INTO A BOOLEAN? 
-- SHOULD "POS" BE AN ORDERED FACTOR? (ChatGPT says no, but prof said we should have all var types?)
+- SHOULD "POS" BE AN ORDERED FACTOR? (ChatGPT says no, but prof said we should have all var types...?)
 
 
 Log-transform “amounts” -> at prof's recommendation
@@ -139,6 +141,9 @@ In our dataset, these variables can be considered amounts:
 - dist_m
 - lbs
 - secs
+
+HOW ABOUT POS ???
+
 ```{r}
 # Log-transforming 'dist_m', 'lbs', and 'secs'
 df.horse$log_dist_m <- log(df.horse$dist_m)
@@ -185,6 +190,7 @@ I DON'T KNOW... LOGS DON'T LOOK A WHOLE LOT MORE BALANCED THAN ORIGINAL VARIABLE
 WHAT SHOULD I SEE HERE?? 
 
 
+## Sample
 
 Running the models take forever with our current dataset, so create a randomized sample with 10% of the data so that we can see results faster at this early stage of the project. 
 
@@ -192,10 +198,54 @@ TODO: USE STRATIFIED SAMPLING!
 
 ```{r}
 # Sample 10% of the dataset for testing
-df.horse_sample <- df.horse[sample(nrow(df.horse), 0.1 * nrow(df.horse)), ]
+#df.horse_sample <- df.horse[sample(nrow(df.horse), 0.1 * nrow(df.horse)), ]
 
+#dim(df.horse_sample)
+```
+OR:
+
+Running the models take forever with our current dataset, so create a stratified sample with 10% of the data so that we can see results faster at this early stage of the project. 
+
+
+```{r}
+# Install the rsample package if needed
+#install.packages("rsample")
+
+# Load required libraries
+library(rsample)
+
+# Assume df.horse is your data frame, and you're stratifying by 'type'
+set.seed(123)  # Set seed for reproducibility
+
+# Create a 10% stratified sample based on the 'type' column
+split <- initial_split(df.horse, prop = 0.1, strata = type)
+
+# Get the training set (this will be your 10% stratified sample)
+stratified_sample <- training(split)
+
+# Check the distribution to ensure stratification worked
+table(stratified_sample$type)  # This should be proportional to the original distribution
+
+# View the sampled data
+head(stratified_sample)
+```
+```{r}
+df.horse_sample <-stratified_sample
 dim(df.horse_sample)
 ```
+See if the sample is proportionate
+
+```{r}
+print("df.horse$type:")
+summary(df.horse$type)
+print("df.horse_sample$type:")
+summary(df.horse_sample$type)
+```
+LOOKS PRETTY GOOD. IS THERE A BETTER WAY TO CHECK THIS?
+MAYBE VISUALIZE? 
+
+
+
 # 2) Linear Model
 Placeholder
 
