@@ -1,7 +1,7 @@
 ---
 title: "Horse Racing Data Analysis Project - ML1 HS24"
 author: "sindhu.chinnamsetti@stud.hslu.ch, ronald.schwalb@stud.hslu.ch, eniko.simo@stud.hslu.ch"
-date: "October 13th, 2024"
+date: "Jan 5, 2025"
 output:
   html_document:
     df_print: paged
@@ -21,6 +21,9 @@ df3 <- read.csv("Lingfield_turf_2014_2024_flat.csv")
 df4 <- read.csv("Lingfield_turf_2014_2024_jumps.csv")
 
 df.horse <- rbind(df1, df2, df3, df4)
+
+str(df.horse)
+head(df.horse)
 ```
 
 - gotta diminish dataset size to: 
@@ -31,6 +34,9 @@ Keep the following columns based on domain knowledge and careful inspection of t
 
 ```{r}
 df.horse <- subset(df.horse, select=c(date, race_name,type, class, dist_m, going, ran, pos, draw, horse, age, sex, lbs, hg, secs, jockey, trainer, prize))
+
+str(df.horse)
+head(df.horse)
 ```
 
 Create a new column 'won', assigning 1 if 'pos' is 1, otherwise 0
@@ -247,7 +253,46 @@ MAYBE VISUALIZE?
 
 
 # 2) Linear Model
-Placeholder
+WIP
+```{r}
+plot(log_secs ~ log_lbs, data = df.horse_sample,
+     main = "Log secs against log weight")
+```
+
+Would expect a positive correlation: the more weight a horse carries 
+-> the longer it will take to complete the race. 
+Somewhat visible. 
+
+```{r}
+plot(log_dist_m ~ log_lbs, data = df.horse_sample,
+     main = "Log distance against log weight")
+```
+
+```{r}
+plot(log_secs ~ log_dist_m, data = df.horse_sample,
+     main = "Log time against log distance")
+```
+The longer the distance the longer time it takes. 
+Logically sound and clearly visible. 
+
+```{r}
+plot(log_secs ~ sex, data = df.horse_sample,
+     main = "Log time against sex")
+```
+HAHA, WHY ARE THERE 6? 
+TODO: Add explanation
+
+```{r}
+plot(log_dist_m ~ sex, data = df.horse_sample,
+     main = "Log distance against sex")
+```
+```{r}
+plot(log_secs ~ won, data = df.horse_sample,
+     main = "Log time against winning")
+```
+THIS IS NOT GOOD 
+
+
 
 # 3) Generalised Linear Model - Poisson
 Placeholder
