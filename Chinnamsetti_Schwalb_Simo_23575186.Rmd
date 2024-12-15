@@ -4,9 +4,14 @@ author: "sindhu.chinnamsetti@stud.hslu.ch, ronald.schwalb@stud.hslu.ch, eniko.si
 date: "Jan 5, 2025"
 output:
   html_document:
+    toc: True
+    toc_depth: 2
     df_print: paged
-  pdf_document: default
   word_document: default
+  pdf_document: default
+editor_options: 
+  markdown: 
+    wrap: sentence
 ---
 
 # 1) Data Cleaning
@@ -79,15 +84,15 @@ unique(df.horse$pos)
 
 Meaning of the abbreviations:
 
-**UR** (Unseated Rider): The jockey fell off during the race.
-**PU** (Pulled Up): The horse was stopped by the jockey during the race due to an issue, usually to prevent injury.
-**F** (Fell): The horse fell during the race.
-**DSQ** (Disqualified): The horse was disqualified, usually for breaking rules like interference.
-**RR** (Refused to Race): The horse refused to start the race.
-**BD** (Brought Down): The horse was knocked down by another horse, usually in a fall.
-**RO** (Ran Out): The horse ran off the course, failing to follow the designated track.
-**SU** (Slipped Up): The horse slipped and fell during the race, usually on a turn or due to ground conditions.
-**REF** (Refused): The horse refused to jump a fence or hurdle, or it refused to continue racing at some point.
+**UR** (Unseated Rider): The jockey fell off during the race.<br>
+**PU** (Pulled Up): The horse was stopped by the jockey during the race due to an issue, usually to prevent injury.<br>
+**F** (Fell): The horse fell during the race.<br>
+**DSQ** (Disqualified): The horse was disqualified, usually for breaking rules like interference.<br>
+**RR** (Refused to Race): The horse refused to start the race.<br>
+**BD** (Brought Down): The horse was knocked down by another horse, usually in a fall.<br>
+**RO** (Ran Out): The horse ran off the course, failing to follow the designated track.<br>
+**SU** (Slipped Up): The horse slipped and fell during the race, usually on a turn or due to ground conditions.<br>
+**REF** (Refused): The horse refused to jump a fence or hurdle, or it refused to continue racing at some point.<br>
 Each of these indicates why a horse didn't complete the race as expected. Thus, these rows can be removed. 
 
 Remove rows where pos is not a number:
@@ -169,6 +174,7 @@ hist(df.horse$secs)
 hist(df.horse$log_secs)
 
 ```
+<br>
 TODO: MAKE THIS PRETTIER AND DELETE THE BELOW
 
 ```{r}
@@ -178,6 +184,7 @@ hist(df.horse$dist_m)
 ```{r}
 hist(df.horse$log_dist_m)
 ```
+<br>
 LOOKS WEIRD ...
 
 ```{r}
@@ -192,6 +199,7 @@ hist(df.horse$secs)
 ```{r}
 hist(df.horse$log_secs)
 ```
+<br>
 I DON'T KNOW... LOGS DON'T LOOK A WHOLE LOT MORE BALANCED THAN ORIGINAL VARIABLES. 
 WHAT SHOULD I SEE HERE?? 
 
@@ -272,6 +280,7 @@ plot(log_dist_m ~ log_lbs, data = df.horse_sample,
 plot(log_secs ~ log_dist_m, data = df.horse_sample,
      main = "Log time against log distance")
 ```
+
 The longer the distance the longer time it takes. 
 Logically sound and clearly visible. 
 
@@ -279,6 +288,7 @@ Logically sound and clearly visible.
 plot(log_secs ~ sex, data = df.horse_sample,
      main = "Log time against sex")
 ```
+
 HAHA, WHY ARE THERE 6? 
 TODO: Add explanation
 
@@ -290,7 +300,10 @@ plot(log_dist_m ~ sex, data = df.horse_sample,
 plot(log_secs ~ won, data = df.horse_sample,
      main = "Log time against winning")
 ```
-THIS IS NOT GOOD 
+
+THIS IS NOT GOOD <br>
+A BETTER CHART IS NEEDED? MAYBE SWAP X + Y AXES?
+OR KEEP THIS TO A MODEL WHERE Y IS BINARY.
 
 
 
