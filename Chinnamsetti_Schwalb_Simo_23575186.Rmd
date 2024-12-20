@@ -142,6 +142,35 @@ df.horse <- subset(df.horse, select=-secs_num)
 # check if it worked
 colnames(df.horse)
 ```
+Sex is a factor with 6 levels.
+```{r}
+unique(df.horse$sex)
+```
+Explanations:
+Race horse sexes: 
+**G (Gelding)**: A male horse that has been castrated. Geldings are often calmer and easier to handle, making them popular in racing.
+
+**M (Mare)**: An adult female horse, usually aged 5 years or older (though this can vary by region).
+
+**F (Filly)**: A young female horse, generally under 4 or 5 years old, depending on the racing jurisdiction.
+
+**C (Colt)**: A young male horse, typically under 4 or 5 years old, that has not been castrated.
+
+**H (Horse)**: This might specifically refer to a mature male horse that has not been castrated, often referred to as a "stallion" but used differently in racing contexts.
+
+**R (Ridgling or Rig)**: A male horse with undescended testicles, meaning it is partially castrated or not fully developed sexually.
+
+Create also a binary variable for sex. Let's keep both variables because the 6 different types might make a difference later.  
+
+
+```{r}
+# Rename the original varialbe
+df.horse$sex_6 <- df.horse$sex
+# Drop old sex column
+df.horse <- subset(df.horse, select=-sex)
+# Create binary sex variable
+df.horse$sex <- ifelse(df.horse$sex_6 %in% c("G", "C", "H", "R"), "M", "F")
+```
 
 - SHOULD "WON" BE TURNED INTO A BOOLEAN? 
 - SHOULD "POS" BE AN ORDERED FACTOR? (ChatGPT says no, but prof said we should have all var types...?)
@@ -289,22 +318,64 @@ plot(log_secs ~ sex, data = df.horse_sample,
      main = "Log time against sex")
 ```
 
-HAHA, WHY ARE THERE 6? 
-TODO: Add explanation
+ 
 
 ```{r}
 plot(log_dist_m ~ sex, data = df.horse_sample,
      main = "Log distance against sex")
 ```
+THESE LAST 2 DON'T BELONG TO LINEAR MODELS!
+BUT LAB1 ALSO INCLUDES THESE...
+
+Now let's consider 2 predictors in a single graph. 
 ```{r}
-plot(log_secs ~ won, data = df.horse_sample,
-     main = "Log time against winning")
+plot(log_dist_m ~ log_secs, data = df.horse_sample,
+     col=won,
+     pch=19,
+     main = "Log distance against log time")
+legend("topleft",
+       pch=19,
+       legend=c("lost","won"), # THESE ARE MANUALLY PROVIDED -> HOW CAN I KNOW WHICH IS WHICH???
+       col=c("blue","red"))
+```
+###########################################################
+JUST TO CHECK WHY GRAPH LOOKS BAD....
+
+```{r}
+plot(dist_m ~ secs, data = df.horse,
+     col=won,
+     pch=19,
+     main = "Log distance against log time")
+legend("topleft",
+       pch=19,
+       legend=c("lost","won"), 
+       col=c("blue","red"))
+```
+THIS DIDN'T SOLVE IT... 
+###########################################################
+
+```{r}
+library(ggplot2)
+qplot(y= log_dist_m,x=log_secs,
+data=df.horse_sample,
+facets= ~won)
 ```
 
-THIS IS NOT GOOD <br>
-A BETTER CHART IS NEEDED? MAYBE SWAP X + Y AXES?
-OR KEEP THIS TO A MODEL WHERE Y IS BINARY.
-
+```{r}
+plot(log_dist_m ~ log_secs, data = df.horse_sample,
+     col=sex,
+     pch=19,
+     main = "Log distance against log time")
+```
+```{r}
+boxplot(log_dist_m ~ won, data = df.horse_sample,
+     main = "Log distance against won")
+```
+```{r}
+boxplot(log_secs ~ won, data = df.horse_sample,
+     main = "Log time against won")
+```
+Plotting against the "won" variable doesn't really show anything. 
 
 
 # 3) Generalised Linear Model - Poisson
