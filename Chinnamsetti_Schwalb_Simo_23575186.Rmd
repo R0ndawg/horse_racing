@@ -170,6 +170,8 @@ df.horse$sex_6 <- df.horse$sex
 df.horse <- subset(df.horse, select=-sex)
 # Create binary sex variable
 df.horse$sex <- ifelse(df.horse$sex_6 %in% c("G", "C", "H", "R"), "M", "F")
+# Convert to factor
+df.horse$sex <- as.factor(df.horse$sex)
 ```
 
 - SHOULD "WON" BE TURNED INTO A BOOLEAN? 
@@ -203,31 +205,7 @@ hist(df.horse$secs)
 hist(df.horse$log_secs)
 
 ```
-<br>
-TODO: MAKE THIS PRETTIER AND DELETE THE BELOW
 
-```{r}
-hist(df.horse$dist_m)
-```
-
-```{r}
-hist(df.horse$log_dist_m)
-```
-<br>
-LOOKS WEIRD ...
-
-```{r}
-hist(df.horse$lbs)
-```
-```{r}
-hist(df.horse$log_lbs)
-```
-```{r}
-hist(df.horse$secs)
-```
-```{r}
-hist(df.horse$log_secs)
-```
 <br>
 I DON'T KNOW... LOGS DON'T LOOK A WHOLE LOT MORE BALANCED THAN ORIGINAL VARIABLES. 
 WHAT SHOULD I SEE HERE?? 
@@ -324,41 +302,32 @@ plot(log_secs ~ sex, data = df.horse_sample,
 plot(log_dist_m ~ sex, data = df.horse_sample,
      main = "Log distance against sex")
 ```
-THESE LAST 2 DON'T BELONG TO LINEAR MODELS!
+
+```{r}
+plot(log_lbs ~ sex, data = df.horse_sample,
+     main = "Log weight against sex")
+```
+
+THESE LAST 3 DON'T BELONG TO LINEAR MODELS!
 BUT LAB1 ALSO INCLUDES THESE...
 
 Now let's consider 2 predictors in a single graph. 
 ```{r}
 plot(log_dist_m ~ log_secs, data = df.horse_sample,
-     col=won,
+     col=sex,
      pch=19,
      main = "Log distance against log time")
 legend("topleft",
        pch=19,
-       legend=c("lost","won"), # THESE ARE MANUALLY PROVIDED -> HOW CAN I KNOW WHICH IS WHICH???
+       legend=c("M","F"), # THESE ARE MANUALLY PROVIDED -> HOW CAN I KNOW WHICH IS WHICH???
        col=c("blue","red"))
 ```
-###########################################################
-JUST TO CHECK WHY GRAPH LOOKS BAD....
-
-```{r}
-plot(dist_m ~ secs, data = df.horse,
-     col=won,
-     pch=19,
-     main = "Log distance against log time")
-legend("topleft",
-       pch=19,
-       legend=c("lost","won"), 
-       col=c("blue","red"))
-```
-THIS DIDN'T SOLVE IT... 
-###########################################################
 
 ```{r}
 library(ggplot2)
 qplot(y= log_dist_m,x=log_secs,
 data=df.horse_sample,
-facets= ~won)
+facets= ~sex)
 ```
 
 ```{r}
@@ -375,7 +344,12 @@ boxplot(log_dist_m ~ won, data = df.horse_sample,
 boxplot(log_secs ~ won, data = df.horse_sample,
      main = "Log time against won")
 ```
+
 Plotting against the "won" variable doesn't really show anything. 
+
+NEXT STEP: fit models
+(see LinearModels1:CatsLab - 3 Fitting models)
+
 
 
 # 3) Generalised Linear Model - Poisson
