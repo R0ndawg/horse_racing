@@ -1,0 +1,515 @@
+---
+title: "Horse Racing Data Analysis Project - ML1 HS24"
+author: "sindhu.chinnamsetti@stud.hslu.ch, ronald.schwalb@stud.hslu.ch, eniko.simo@stud.hslu.ch"
+date: "Jan 5, 2025"
+output:
+  html_document:
+    toc: True
+    toc_depth: 2
+    df_print: paged
+  word_document: default
+  pdf_document: default
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+# 1) Data Cleaning
+<span style="color:red">WIP</span>
+
+
+```{r}
+# Import the scraped racingpost Data from CSV Files
+df1 <- read.csv("Lingfield_AW_2014_2024_flat.csv")
+df2 <- read.csv("Lingfield_AW_2014_2024_jumps.csv")
+df3 <- read.csv("Lingfield_turf_2014_2024_flat.csv")
+df4 <- read.csv("Lingfield_turf_2014_2024_jumps.csv")
+
+df.horse <- rbind(df1, df2, df3, df4)
+
+str(df.horse)
+head(df.horse)
+```
+
+
+```{r}
+# Import the Betfair Starting Price data
+df.bsp <- read.csv("ML1_BSP_DF.csv")
+str(df.bsp)
+head(df.bsp)
+
+```
+```{r}
+# Merge df.horse and df.bsp
+
+# Split the 'horse' column into 'horse' and 'origin'
+df.horse <- df.horse %>%
+  mutate(
+    origin = gsub(".*\\((.*)\\)", "\\1", horse),  # Extract the text inside parentheses
+    horse = gsub("\\s*\\(.*\\)", "", horse)      # Remove the text inside parentheses and the brackets
+  )
+
+# In both the racingost and BSP dataset, the names are converted to upper cases to have a higher chance of matching when joining.
+df.horse$horse <-
+  toupper(gsub("[' ]", "", df.horse$horse))
+df.bsp$HORSE_NAME <-
+  toupper(gsub("[' ]", "", df.bsp$HORSE_NAME))
+
+# Now, merge the two data frames on the keys 'horse'and 'date'
+df.horses <-
+  merge(df.horse,
+        df.bsp,
+        by.x = c("horse", "date"),
+        by.y = c("HORSE_NAME", "DATE")
+        )
+
+# Find rows in df.bsp that did not match with df.horse
+unmatched_horses_bsp <- anti_join(df.bsp, df.horse, 
+                                  by = c("HORSE_NAME" = "horse", "DATE" = "date"))
+
+# A total of 215 horses did not merge due to slight mismatches in the spelling of horse names.
+# We've noticed here that in the racingpost scraped data for some reason an I was added at the end of the horse's name e.g. SNOWKING became SNOWKINGI
+# Utilizing Chatgpt, this could have been rectified without plenty manual fixing, see below:
+
+# Get and print unique horse names
+unique_horses <- unmatched_horses_bsp %>%
+  distinct(HORSE_NAME) %>%
+  pull(HORSE_NAME)
+
+# Update the horse names
+df.horse <- df.horse %>%
+  mutate(horse = ifelse(horse %in% paste0(unique_horses, "I"), 
+                        substr(horse, 1, nchar(horse) - 1), 
+                        horse))
+
+# Now, merge the two data frames on the keys 'horse'and 'date'
+df.horses <-
+  merge(df.horse,
+        df.bsp,
+        by.x = c("horse", "date"),
+        by.y = c("HORSE_NAME", "DATE")
+        )
+
+```
+- There were 150 instances where datasets could not be merged due to mismatches in horse's
+names
+- Now all rows are removed where the counted number of horses for the event is less than indicated by column HORSE_COUNT
+
+```{r}
+# Count occurrences of each unique date and off combination
+df.horses <- df.horses %>%
+  group_by(date, off) %>%                 # Group by date and off
+  mutate(horse_count2 = n()) %>%          # Count occurrences within each group
+  ungroup()                               # Remove grouping
+
+# Remove rows where horse_count2 < HORSE_COUNT
+df.horses <- df.horses %>%
+  filter(horse_count2 >= HORSE_COUNT)
+
+
+```
+
+- gotta diminish dataset size to: 
+- max 10^5 = 100,000 rows
+- 10-20 predictors
+Keep the following columns based on domain knowledge and careful inspection of the dataset:
+
+```{r}
+df.horse2 <- subset(df.horses, select=c(horse, date, course, off, type, class, dist_m, going, ran, pos, draw, age, sex, lbs, secs, dec, jockey, trainer, or, rpr, sire, dam, damsire, owner, origin, EVENT_TYPE, WIN, BSP_WIN, IImp_Perc_WIN, PLACE, BSP_PLACE, Imp_Perc_PLACE))
+
+str(df.horse2)
+head(df.horse2)
+```
+
+Create a new column 'won', assigning 1 if 'pos' is 1, otherwise 0
+
+```{r}
+df.horse$won <- ifelse(df.horse$pos == 1, 1, 0)
+# Check the first few rows to ensure the new column has been added
+head(df.horse[c("pos","won")],50)
+# => looks good
+```
+
+For some of the models, we will need a binary outcome variable. 
+The "won" variable is not ideal because there will be a lot less 1s than 0s (approx. 10-12 times less). 
+Thus, let us also create a "place" variable, indicating whether the horse finished in the top 3. 
+```{r}
+df.horse$place <- ifelse(df.horse$pos == c(1,2,3), 1, 0)
+# Check the first few rows to ensure the new column has been added
+head(df.horse[c("pos","place")],50)
+# => looks good ???
+```
+
+
+Check for missing values. NAs and empty strings
+```{r}
+colSums(is.na(df.horse) | df.horse == "")
+```
+
+```{r}
+# let's drop hg and prize because most of them are missing
+# but let's keep draw because AFAIK it might influence outcome
+# keep it in mind that it only exists for Flat course type
+
+df.horse <- subset(df.horse, select=-c(hg,prize))
+```
+Check datatypes. 
+```{r}
+str(df.horse)
+```
+Some variable types should be modified for better analysis. 
+
+Convert 'date' column to date format
+```{r}
+df.horse$date <- as.Date(as.character(df.horse$date), format = "%Y-%m-%d")
+```
+
+
+```{r}
+# check which values of pos can't be converted to integers
+unique(df.horse$pos)
+```
+
+Meaning of the abbreviations:
+
+**UR** (Unseated Rider): The jockey fell off during the race.<br>
+**PU** (Pulled Up): The horse was stopped by the jockey during the race due to an issue, usually to prevent injury.<br>
+**F** (Fell): The horse fell during the race.<br>
+**DSQ** (Disqualified): The horse was disqualified, usually for breaking rules like interference.<br>
+**RR** (Refused to Race): The horse refused to start the race.<br>
+**BD** (Brought Down): The horse was knocked down by another horse, usually in a fall.<br>
+**RO** (Ran Out): The horse ran off the course, failing to follow the designated track.<br>
+**SU** (Slipped Up): The horse slipped and fell during the race, usually on a turn or due to ground conditions.<br>
+**REF** (Refused): The horse refused to jump a fence or hurdle, or it refused to continue racing at some point.<br>
+Each of these indicates why a horse didn't complete the race as expected. Thus, these rows can be removed. 
+
+Remove rows where pos is not a number:
+```{r}
+df.horse <- df.horse[!df.horse$pos %in% c("UR", "PU", "F", "DSQ", "RR", "BD", "RO", "SU", "REF"), ]
+```
+
+See if it worked:
+
+```{r}
+unique(df.horse$pos)
+```
+ 
+
+```{r}
+# check the same for secs
+df.horse$secs_num <- as.numeric(df.horse$secs)
+df.horse[is.na(as.integer(df.horse$secs_num)), ]$secs
+```
+```{r}
+# see rows where secs = "-"
+df.horse[df.horse$secs=="-",]
+```
+This looks like a legit entry but since we have no time data for it, let's remove it. 
+
+```{r}
+df.horse <- df.horse[df.horse$secs != "-", ]
+```
+
+Now convert them to numeric variables.
+
+```{r}
+df.horse$pos <- as.integer(df.horse$pos)
+df.horse$secs <- as.numeric(df.horse$secs)
+```
+
+Convert all characters to factors:
+```{r}
+# Convert all character columns to factors
+df.horse[sapply(df.horse, is.character)] <- lapply(df.horse[sapply(df.horse, is.character)], as.factor)
+
+str(df.horse)
+```
+```{r}
+# remove helper variable, won't need it anymore
+df.horse <- subset(df.horse, select=-secs_num)
+# check if it worked
+colnames(df.horse)
+```
+Sex is a factor with 6 levels.
+```{r}
+unique(df.horse$sex)
+```
+Explanations:
+Race horse sexes: 
+**G (Gelding)**: A male horse that has been castrated. Geldings are often calmer and easier to handle, making them popular in racing.
+
+**M (Mare)**: An adult female horse, usually aged 5 years or older (though this can vary by region).
+
+**F (Filly)**: A young female horse, generally under 4 or 5 years old, depending on the racing jurisdiction.
+
+**C (Colt)**: A young male horse, typically under 4 or 5 years old, that has not been castrated.
+
+**H (Horse)**: This might specifically refer to a mature male horse that has not been castrated, often referred to as a "stallion" but used differently in racing contexts.
+
+**R (Ridgling or Rig)**: A male horse with undescended testicles, meaning it is partially castrated or not fully developed sexually.
+
+Create also a binary variable for sex. Let's keep both variables because the 6 different types might make a difference later.  
+
+
+```{r}
+# Rename the original varialbe
+df.horse$sex_6 <- df.horse$sex
+# Drop old sex column
+df.horse <- subset(df.horse, select=-sex)
+# Create binary sex variable
+df.horse$sex <- ifelse(df.horse$sex_6 %in% c("G", "C", "H", "R"), "M", "F")
+# Convert to factor
+df.horse$sex <- as.factor(df.horse$sex)
+```
+
+- SHOULD "WON" BE TURNED INTO A BOOLEAN? 
+- SHOULD "POS" BE AN ORDERED FACTOR? (ChatGPT says no, but prof said we should have all var types...?)
+
+
+Log-transform “amounts” -> at prof's recommendation
+In our dataset, these variables can be considered amounts:
+- dist_m
+- lbs
+- secs
+- age
+
+HOW ABOUT POS ???
+
+```{r}
+# Log-transforming 'dist_m', 'lbs', and 'secs'
+df.horse$log_dist_m <- log(df.horse$dist_m)
+df.horse$log_lbs <- log(df.horse$lbs)
+df.horse$log_secs <- log(df.horse$secs)
+df.horse$log_age <- log(df.horse$age)
+```
+
+Visualize original variable + log to see if distribution is more balanced.
+```{r}
+par(mfrow = c(4, 2))
+
+hist(df.horse$dist_m)
+hist(df.horse$log_dist_m)
+hist(df.horse$lbs)
+hist(df.horse$log_lbs)
+hist(df.horse$secs)
+hist(df.horse$log_secs)
+hist(df.horse$age)
+hist(df.horse$log_age)
+
+```
+
+<br>
+I DON'T KNOW... LOGS DON'T LOOK A WHOLE LOT MORE BALANCED THAN ORIGINAL VARIABLES. 
+WHAT SHOULD I SEE HERE?? 
+SHOULDN'T THEY BE CENTERED AROUND 0??
+
+```{r}
+str(df.horse)
+```
+
+## Sample
+
+Running the models take forever with our current dataset, so create a randomized sample with 10% of the data so that we can see results faster at this early stage of the project. 
+
+TODO: USE STRATIFIED SAMPLING!
+
+```{r}
+# Sample 10% of the dataset for testing
+#df.horse_sample <- df.horse[sample(nrow(df.horse), 0.1 * nrow(df.horse)), ]
+
+#dim(df.horse_sample)
+```
+OR:
+
+Running the models take forever with our current dataset, so create a stratified sample with 10% of the data so that we can see results faster at this early stage of the project. 
+
+
+```{r}
+# Install the rsample package if needed
+#install.packages("rsample")
+
+# Load required libraries
+library(rsample)
+
+# Assume df.horse is your data frame, and you're stratifying by 'type'
+set.seed(123)  # Set seed for reproducibility
+
+# Create a 10% stratified sample based on the 'type' column
+split <- initial_split(df.horse, prop = 0.1, strata = type)
+
+# Get the training set (this will be your 10% stratified sample)
+stratified_sample <- training(split)
+
+# Check the distribution to ensure stratification worked
+table(stratified_sample$type)  # This should be proportional to the original distribution
+
+# View the sampled data
+head(stratified_sample)
+```
+```{r}
+df.horse_sample <-stratified_sample
+dim(df.horse_sample)
+```
+See if the sample is proportionate
+
+```{r}
+print("df.horse$type:")
+summary(df.horse$type)
+print("df.horse_sample$type:")
+summary(df.horse_sample$type)
+```
+LOOKS PRETTY GOOD. IS THERE A BETTER WAY TO CHECK THIS?
+MAYBE VISUALIZE? 
+
+
+
+# 2) Linear Model
+WIP
+```{r}
+plot(log_secs ~ log_lbs, data = df.horse_sample,
+     main = "Log secs against log weight")
+```
+
+Would expect a positive correlation: the more weight a horse carries 
+-> the longer it will take to complete the race. 
+Somewhat visible. 
+
+```{r}
+plot(log_dist_m ~ log_lbs, data = df.horse_sample,
+     main = "Log distance against log weight")
+```
+
+```{r}
+plot(log_secs ~ log_dist_m, data = df.horse_sample,
+     main = "Log time against log distance")
+```
+
+The longer the distance the longer time it takes. 
+Logically sound and clearly visible. 
+
+```{r}
+plot(log_secs ~ sex, data = df.horse_sample,
+     main = "Log time against sex")
+```
+
+ 
+
+```{r}
+plot(log_dist_m ~ sex, data = df.horse_sample,
+     main = "Log distance against sex")
+```
+
+```{r}
+plot(log_lbs ~ sex, data = df.horse_sample,
+     main = "Log weight against sex")
+```
+
+THESE LAST 3 DON'T BELONG TO LINEAR MODELS!
+BUT LAB1 ALSO INCLUDES THESE...
+
+Now let's consider 2 predictors in a single graph. 
+```{r}
+plot(log_dist_m ~ log_secs, data = df.horse_sample,
+     col=sex,
+     pch=19,
+     main = "Log distance against log time")
+legend("topleft",
+       pch=19,
+       legend=c("M","F"), # THESE ARE MANUALLY PROVIDED -> HOW CAN I KNOW WHICH IS WHICH???
+       col=c("blue","red"))
+```
+
+```{r}
+library(ggplot2)
+qplot(y= log_dist_m,x=log_secs,
+data=df.horse_sample,
+facets= ~sex)
+```
+
+```{r}
+plot(log_dist_m ~ log_secs, data = df.horse_sample,
+     col=sex,
+     pch=19,
+     main = "Log distance against log time")
+```
+```{r}
+boxplot(log_dist_m ~ won, data = df.horse_sample,
+     main = "Log distance against won")
+```
+```{r}
+boxplot(log_secs ~ won, data = df.horse_sample,
+     main = "Log time against won")
+```
+
+Plotting against the "won" variable doesn't really show anything. 
+
+NEXT STEP: fit models
+(see LinearModels1:CatsLab - 3 Fitting models)
+
+
+
+# 3) Generalised Linear Model - Poisson
+Placeholder
+
+# 4) Generalised Linear Model - Binomial
+WIP 
+```{r}
+glm.horse_sample <- glm(won ~ type + log_dist_m + going + age + sex + log_lbs + log_secs, 
+                data = df.horse_sample,
+                family = "binomial")
+summary(glm.horse_sample)
+
+```
+HOW TO INTERPRET ALL THESE FACTOR VARIABLES?
+SHOULD THEY ALL BE FACTORS OR IS THERE A BETTER WAY?
+I DON'T REMEMBER SO MANY FACTORS FROM THE LECTURES.
+
+
+
+# 5) Generalised Additive Model
+Placeholder
+
+# 6) Neural Network
+Placeholder
+
+# 7) Support Vector Machine
+WIP
+
+Trying to find a good categorical target variable. 
+Check the Distribution of sex_6: 
+
+```{r}
+table(df.horse$sex_6)
+```
+The distribution of the sexes looks rather imbalanced. 
+Since the rare categories (H, M, R) don’t have meaningful distinctions, combine them into an "Other" category:
+```{r}
+df.horse$sex_4 <- as.character(df.horse$sex_6)  # Convert to character to modify levels
+df.horse$sex_4[df.horse$sex_4 %in% c("H", "M", "R")] <- "Other"  # Combine rare categories
+df.horse$sex_4 <- as.factor(df.horse$sex_4)  # Convert back to factor
+
+# Check the new distribution
+table(df.horse$sex_4)
+```
+#TODO:
+#CONTINUE WITH THIS:
+Stratified Sampling for Training
+Ensure that your training data is representative by using stratified sampling. This prevents the model from being biased toward majority classes during training:
+
+```{r}
+#library(caret)
+
+## Stratified train-test split
+#trainIndex <- createDataPartition(df$sex_6, p = 0.7, list = FALSE)
+#df_train <- df[trainIndex, ]
+#df_test <- df[-trainIndex, ]
+```
+
+
+# 8) Use of Generative AI
+Placeholder
+
+# 9) Conclusion
+WIP
+
+- Conclusions were a lot less clear to draw from this real-world dataset than in the case of the sample datasets presented at the lectures.
