@@ -39,7 +39,7 @@ head(df.horse)
 Keep the following columns based on domain knowledge and careful inspection of the dataset:
 
 ```{r}
-df.horse <- subset(df.horse, select=c(date, race_name,type, class, dist_m, going, ran, pos, draw, horse, age, sex, lbs, hg, secs, jockey, trainer, prize))
+df.horse <- subset(df.horse, select=c(date, race_name,type, class, dist_m, going, ran, pos, draw, horse, age, sex, lbs, hg, secs, dec, jockey, trainer, prize))
 
 str(df.horse)
 head(df.horse)
@@ -368,7 +368,7 @@ boxplot(log_secs ~ won, data = df.horse_sample,
 Plotting against the "won" variable doesn't really show anything. 
 
 NEXT STEP: fit models
-(see LinearModels1:CatsLab - 3 Fitting models)
+(see LinearModels1: CatsLab - 3 Fitting models)
 
 
 
@@ -399,6 +399,13 @@ I DON'T REMEMBER SO MANY FACTORS FROM THE LECTURES.
 # 7) Support Vector Machine
 ## WIP
 
+Load the packages: 
+```{r}
+library(tidyverse)
+library(e1071)
+library(caret)
+```
+
 Trying to find a good categorical target variable. 
 Check the Distribution of sex_6: 
 
@@ -415,19 +422,70 @@ df.horse$sex_4 <- as.factor(df.horse$sex_4)  # Convert back to factor
 # Check the new distribution
 table(df.horse$sex_4)
 ```
-#TODO:
-#CONTINUE WITH THIS:
-Stratified Sampling for Training
+
+The updated distribution looks more balanced than before! While there is still some imbalance (e.g., G is much more frequent than Other or C). 
 Ensure that training data is representative by using stratified sampling. This prevents the model from being biased toward majority classes during training:
 
 ```{r}
-library(caret)
-
 ## Stratified train-test split
-trainIndex <- createDataPartition(df.horse$sex_4, p = 0.7, list = FALSE)
+trainIndex <- createDataPartition(df.horse$sex_4, p = 0.85, list = F)
 df_train <- df.horse[trainIndex, ]
 df_test <- df.horse[-trainIndex, ]
 ```
+
+
+Take a look at the data:
+
+```{r}
+df.horse %>%
+ ggplot(aes(x = log_dist_m, y = log_secs, color = sex_4)) +
+ geom_point()
+```
+```{r}
+df.horse %>%
+ ggplot(aes(x = log_lbs, y = log_secs, color = sex_4)) +
+ geom_point()
+```
+Somewhat more blue and purple dots are visible in the upper right corner, and somewhat more green and red in the bottom left. 
+But there is definitely no clear-cut distinction or identifyable clusters. 
+
+```{r}
+df.horse %>%
+ ggplot(aes(x = log_age, y = log_secs, color = sex_4)) +
+ geom_point()
+```
+Prepare the data for training:
+```{r}
+set.seed(123)
+indices<-createDataPartition(df.horse$sex_4,p=.85,list=F)
+```
+
+Create variables to access data: 
+```{r}
+train<-df.horse%>%
+slice(indices)
+test_in<-df.horse%>%
+slice(-indices)%>%
+select(-sex_4)
+test_truth<-df.horse%>%
+slice(-indices)%>%
+pull(sex_4)
+```
+Train the Support Vector Machine:
+```{r}
+set.seed(123)
+horse_svm <- svm(sex_4 ~., train, kernel="linear", scale=TRUE, cost=10)
+```
+
+Visualization is not an option since we have 20+ variables thus we cannot visualize in 20+ dimensions. 
+Plot the above 2 dimensions instead: 
+```{r}
+plot(horse_svm, train, log_secs ~ log_lbs)
+```
+
+
+TO BE CONTINUED ... !!
+
 
 
 # 8) Use of Generative AI
