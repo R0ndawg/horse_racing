@@ -53,6 +53,17 @@ head(df.horse[c("pos","won")],50)
 # => looks good
 ```
 
+For some of the models, we will need a binary outcome variable. 
+The "won" variable is not ideal because there will be a lot less 1s than 0s (approx. 10-12 times less). 
+Thus, let us also create a "place" variable, indicating whether the horse finished in the top 3. 
+```{r}
+df.horse$place <- ifelse(df.horse$pos == c(1,2,3), 1, 0)
+# Check the first few rows to ensure the new column has been added
+head(df.horse[c("pos","place")],50)
+# => looks good ???
+```
+
+
 Check for missing values. NAs and empty strings
 ```{r}
 colSums(is.na(df.horse) | df.horse == "")
@@ -183,6 +194,7 @@ In our dataset, these variables can be considered amounts:
 - dist_m
 - lbs
 - secs
+- age
 
 HOW ABOUT POS ???
 
@@ -191,11 +203,12 @@ HOW ABOUT POS ???
 df.horse$log_dist_m <- log(df.horse$dist_m)
 df.horse$log_lbs <- log(df.horse$lbs)
 df.horse$log_secs <- log(df.horse$secs)
+df.horse$log_age <- log(df.horse$age)
 ```
 
 Visualize original variable + log to see if distribution is more balanced.
 ```{r}
-par(mfrow = c(3, 2))
+par(mfrow = c(4, 2))
 
 hist(df.horse$dist_m)
 hist(df.horse$log_dist_m)
@@ -203,13 +216,19 @@ hist(df.horse$lbs)
 hist(df.horse$log_lbs)
 hist(df.horse$secs)
 hist(df.horse$log_secs)
+hist(df.horse$age)
+hist(df.horse$log_age)
 
 ```
 
 <br>
 I DON'T KNOW... LOGS DON'T LOOK A WHOLE LOT MORE BALANCED THAN ORIGINAL VARIABLES. 
 WHAT SHOULD I SEE HERE?? 
+SHOULDN'T THEY BE CENTERED AROUND 0??
 
+```{r}
+str(df.horse)
+```
 
 ## Sample
 
@@ -364,9 +383,9 @@ glm.horse_sample <- glm(won ~ type + log_dist_m + going + age + sex + log_lbs + 
 summary(glm.horse_sample)
 
 ```
-<span style="color:red";>HOW TO INTERPRET ALL THESE FACTOR VARIABLES?
+HOW TO INTERPRET ALL THESE FACTOR VARIABLES?
 SHOULD THEY ALL BE FACTORS OR IS THERE A BETTER WAY?
-I DON'T REMEMBER SO MANY FACTORS FROM THE LECTURES. </span>
+I DON'T REMEMBER SO MANY FACTORS FROM THE LECTURES.
 
 
 
@@ -377,10 +396,43 @@ Placeholder
 Placeholder
 
 # 7) Support Vector Machine
-Placeholder
+WIP
+
+Trying to find a good categorical target variable. 
+Check the Distribution of sex_6: 
+
+```{r}
+table(df.horse$sex_6)
+```
+The distribution of the sexes looks rather imbalanced. 
+Since the rare categories (H, M, R) don’t have meaningful distinctions, combine them into an "Other" category:
+```{r}
+df.horse$sex_4 <- as.character(df.horse$sex_6)  # Convert to character to modify levels
+df.horse$sex_4[df.horse$sex_4 %in% c("H", "M", "R")] <- "Other"  # Combine rare categories
+df.horse$sex_4 <- as.factor(df.horse$sex_4)  # Convert back to factor
+
+# Check the new distribution
+table(df.horse$sex_4)
+```
+#TODO:
+#CONTINUE WITH THIS:
+Stratified Sampling for Training
+Ensure that your training data is representative by using stratified sampling. This prevents the model from being biased toward majority classes during training:
+
+```{r}
+#library(caret)
+
+## Stratified train-test split
+#trainIndex <- createDataPartition(df$sex_6, p = 0.7, list = FALSE)
+#df_train <- df[trainIndex, ]
+#df_test <- df[-trainIndex, ]
+```
+
 
 # 8) Use of Generative AI
 Placeholder
 
 # 9) Conclusion
-Placeholder
+WIP
+
+- Conclusions were a lot less clear to draw from this real-world dataset than in the case of the sample datasets presented at the lectures.
