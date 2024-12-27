@@ -115,44 +115,54 @@ df.horses <- df.horses %>%
 Keep the following columns based on domain knowledge and careful inspection of the dataset:
 
 ```{r}
-df.horse2 <- subset(df.horses, select=c(horse, date, course, off, type, class, dist_m, going, ran, pos, draw, age, sex, lbs, secs, dec, jockey, trainer, or, rpr, sire, dam, damsire, owner, origin, EVENT_TYPE, WIN, BSP_WIN, IImp_Perc_WIN, PLACE, BSP_PLACE, Imp_Perc_PLACE))
+df.horse <- subset(df.horses, select=c(horse, date, course, off, type, class, dist_m, going, ran, pos, draw, age, sex, lbs, secs, dec, jockey, trainer, or, rpr, sire, dam, damsire, owner, origin, WIN, BSP_WIN, Imp_Perc_WIN, PLACE, BSP_PLACE, Imp_Perc_PLACE))
 
-str(df.horse2)
-head(df.horse2)
+str(df.horse)
+head(df.horse)
 ```
 
-Create a new column 'won', assigning 1 if 'pos' is 1, otherwise 0
+### Dataset Column Descriptions
 
-```{r}
-df.horse$won <- ifelse(df.horse$pos == 1, 1, 0)
-# Check the first few rows to ensure the new column has been added
-head(df.horse[c("pos","won")],50)
-# => looks good
-```
+c(PLACE, BSP_PLACE, Imp_Perc_PLACE)
 
-For some of the models, we will need a binary outcome variable. 
-The "won" variable is not ideal because there will be a lot less 1s than 0s (approx. 10-12 times less). 
-Thus, let us also create a "place" variable, indicating whether the horse finished in the top 3. 
-```{r}
-df.horse$place <- ifelse(df.horse$pos == c(1,2,3), 1, 0)
-# Check the first few rows to ensure the new column has been added
-head(df.horse[c("pos","place")],50)
-# => looks good ???
-```
-
+-   **horse**: The name of the horse.
+-   **date**: The date on which the race occurred.
+-   **course**: The track on which the race took place (AW stands for All Weather which refers to the track type)
+-   **off**: The time the race was set to begin.
+-   **type**: The race type e.g. flat, hurdles or chase.
+-   **class**: The class of the horse.
+-   **dist_m**: The race distance in meters.
+-   **going**: The state of the track or racecourse at the time of the event.
+-   **ran**: The total number of participants in the race.
+-   **pos**: The finishing position of the horse in the race.
+-   **draw**: The starting position or gate assigned to a horse at the beginning of the race.
+-   **age**: The age of the horse participating in the race.
+-   **sex**: The gender of the horse.
+-   **lbs**: The amount of weight in pounds the horse carries during the race, including any penalties or allowances.
+-   **secs**: The time in seconds to complete the race.
+-   **dec**: The decimal odds associated with a horse's chances of winning.
+-   **jockey**: The name of the jockey riding the horse during the race.
+-   **trainer**: The name of the trainer responsible for preparing the horse for the race.
+-   **or**: The official rating of a horse, indicating its ability based on past performances.
+-   **rpr**: The Racing Post Rating, a numerical assessment of a horse's performance.
+-   **sire**: The sire or father of the horse, providing pedigree information.
+-   **dam**: The dam or mother of the horse, offering additional pedigree details.
+-   **damsire**: The grandfather of the horse, further contributing to its lineage.
+-   **owner**: The name of the person or organisation owning the horse.
+-   **origin**: The country where the horse was bred.
+-   **WIN**: The result indicating whether the horse won the race.
+-   **BSP_WIN**: The Betfair Starting Price or Odds for the horse to win at the time the race begins (inverse of BSP_WIN).
+-   **Imp_Perc_WIN**: The implied probability percentage based on the BSP for the selected horse.
+-   **PLACE**: The result indicating whether the horse placed in the top positions.
+-   **BSP_PLACE**: The Betfair Starting Price or Odds for the horse placing at the time the race begins.
+-   **Imp_Perc_PLACE**: The implied probability percentage for the horse placing at the time the race begins (inverse of BSP_PLACE).
 
 Check for missing values. NAs and empty strings
 ```{r}
 colSums(is.na(df.horse) | df.horse == "")
 ```
 
-```{r}
-# let's drop hg and prize because most of them are missing
-# but let's keep draw because AFAIK it might influence outcome
-# keep it in mind that it only exists for Flat course type
 
-df.horse <- subset(df.horse, select=-c(hg,prize))
-```
 Check datatypes. 
 ```{r}
 str(df.horse)
@@ -183,9 +193,30 @@ Meaning of the abbreviations:
 **REF** (Refused): The horse refused to jump a fence or hurdle, or it refused to continue racing at some point.<br>
 Each of these indicates why a horse didn't complete the race as expected. Thus, these rows can be removed. 
 
-Remove rows where pos is not a number:
+Change rows where pos is not a number:
 ```{r}
-df.horse <- df.horse[!df.horse$pos %in% c("UR", "PU", "F", "DSQ", "RR", "BD", "RO", "SU", "REF"), ]
+# Abbreviation for non-finishers
+values_to_replace <- c("UR", "PU", "F", "DSQ", "RR", "BD", "RO", "SU", "REF")
+
+# Group by type, count specific values, and calculate total races
+result <- df.horse %>%
+  group_by(type) %>%
+  summarise(
+    count = sum(pos %in% values_to_replace),  # Count occurrences of specific values
+    total_races = n()                      # Count total races for each type
+  )
+
+# View the result
+print(result)
+
+# Add the `finished` column and replace values in `pos`
+df.horse <- df.horse %>%
+  mutate(
+    # Add a column indicating if the horse finished
+    finished = ifelse(grepl("^[0-9]+$", pos), 1, 0),  # Check if `pos` is numeric
+    # Replace specific values in `pos` with the corresponding value from `ran`
+    pos = ifelse(pos %in% values_to_replace, ran, pos)
+  )
 ```
 
 See if it worked:
