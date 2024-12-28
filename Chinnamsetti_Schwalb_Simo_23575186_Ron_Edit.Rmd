@@ -55,7 +55,11 @@ df.horse$horse <-
 df.bsp$HORSE_NAME <-
   toupper(gsub("[' ]", "", df.bsp$HORSE_NAME))
 
-# Now, merge the two data frames on the keys 'horse'and 'date'
+
+df.bsp$DATE <- as.Date(df.bsp$DATE, format = "%d/%m/%Y")
+df.horse$date <- as.Date(as.character(df.horse$date), format = "%Y-%m-%d")
+
+# Now, merge the two data frames on the keys 'horse' and 'date'
 df.horses <-
   merge(df.horse,
         df.bsp,
@@ -90,6 +94,7 @@ df.horses <-
         by.y = c("HORSE_NAME", "DATE")
         )
 
+
 ```
 - There were 150 instances where datasets could not be merged due to mismatches in horse's
 names
@@ -112,10 +117,10 @@ df.horses <- df.horses %>%
 - gotta diminish dataset size to: 
 - max 10^5 = 100,000 rows
 - 10-20 predictors
-Keep the following columns based on domain knowledge and careful inspection of the dataset:
+Keep the following columns based on domain knowledge and careful inspection of the dataset e.g. owner, dam and damsire are removed as there are too many different entries, but jockey, trainer and sire are kept as there are only a few. BSP for WIN and PLACE are removed, as Imp_Perc is the inverse of the odds and easier to interpret:
 
 ```{r}
-df.horse <- subset(df.horses, select=c(horse, date, course, off, type, class, dist_m, going, ran, pos, draw, age, sex, lbs, secs, dec, jockey, trainer, or, rpr, sire, dam, damsire, owner, origin, WIN, BSP_WIN, Imp_Perc_WIN, PLACE, BSP_PLACE, Imp_Perc_PLACE))
+df.horse <- subset(df.horses, select=c(horse, date, course, off, type, class, dist_m, going, ran, pos, draw, age, sex, lbs, secs, dec, jockey, trainer, or, rpr, sire, WIN, Imp_Perc_WIN, PLACE, Imp_Perc_PLACE))
 
 str(df.horse)
 head(df.horse)
@@ -146,14 +151,10 @@ c(PLACE, BSP_PLACE, Imp_Perc_PLACE)
 -   **or**: The official rating of a horse, indicating its ability based on past performances.
 -   **rpr**: The Racing Post Rating, a numerical assessment of a horse's performance.
 -   **sire**: The sire or father of the horse, providing pedigree information.
--   **dam**: The dam or mother of the horse, offering additional pedigree details.
--   **damsire**: The grandfather of the horse, further contributing to its lineage.
--   **owner**: The name of the person or organisation owning the horse.
--   **origin**: The country where the horse was bred.
 -   **WIN**: The result indicating whether the horse won the race.
--   **BSP_WIN**: The Betfair Starting Price or Odds for the horse to win at the time the race begins (inverse of BSP_WIN).
+-   **BSP_WIN**: The Betfair Starting Price or Odds for the horse to win at the time the race begins (inverse of BSP_WIN). - replaced by Imp_Perc_WIN
 -   **Imp_Perc_WIN**: The implied probability percentage based on the BSP for the selected horse.
--   **PLACE**: The result indicating whether the horse placed in the top positions.
+-   **PLACE**: The result indicating whether the horse placed in the top positions. - replace by Imp_Perc_PLACE
 -   **BSP_PLACE**: The Betfair Starting Price or Odds for the horse placing at the time the race begins.
 -   **Imp_Perc_PLACE**: The implied probability percentage for the horse placing at the time the race begins (inverse of BSP_PLACE).
 
@@ -168,11 +169,6 @@ Check datatypes.
 str(df.horse)
 ```
 Some variable types should be modified for better analysis. 
-
-Convert 'date' column to date format
-```{r}
-df.horse$date <- as.Date(as.character(df.horse$date), format = "%Y-%m-%d")
-```
 
 
 ```{r}
@@ -193,7 +189,7 @@ Meaning of the abbreviations:
 **REF** (Refused): The horse refused to jump a fence or hurdle, or it refused to continue racing at some point.<br>
 Each of these indicates why a horse didn't complete the race as expected. Thus, these rows can be removed. 
 
-Change rows where pos is not a number:
+Change rows where pos is not a number in a new data frame df.horses (the reason is that if required we can bui a ML model that predict the number of non finishers):
 ```{r}
 # Abbreviation for non-finishers
 values_to_replace <- c("UR", "PU", "F", "DSQ", "RR", "BD", "RO", "SU", "REF")
@@ -210,7 +206,7 @@ result <- df.horse %>%
 print(result)
 
 # Add the `finished` column and replace values in `pos`
-df.horse <- df.horse %>%
+df.horses <- df.horse %>%
   mutate(
     # Add a column indicating if the horse finished
     finished = ifelse(grepl("^[0-9]+$", pos), 1, 0),  # Check if `pos` is numeric
@@ -218,6 +214,12 @@ df.horse <- df.horse %>%
     pos = ifelse(pos %in% values_to_replace, ran, pos)
   )
 ```
+
+Remove rows where pos is not a number:
+```{r}
+df.horse <- df.horse[!df.horse$pos %in% c("UR", "PU", "F", "DSQ", "RR", "BD", "RO", "SU", "REF"), ]
+```
+
 
 See if it worked:
 
@@ -228,13 +230,11 @@ unique(df.horse$pos)
 
 ```{r}
 # check the same for secs
+
 df.horse$secs_num <- as.numeric(df.horse$secs)
 df.horse[is.na(as.integer(df.horse$secs_num)), ]$secs
 ```
-```{r}
-# see rows where secs = "-"
-df.horse[df.horse$secs=="-",]
-```
+
 This looks like a legit entry but since we have no time data for it, let's remove it. 
 
 ```{r}
@@ -248,6 +248,127 @@ df.horse$pos <- as.integer(df.horse$pos)
 df.horse$secs <- as.numeric(df.horse$secs)
 ```
 
+
+Add a feature avg_speed by dividing dist_m by secs which will be used to decide whether or, rpr or a combination should be used (Below code can still be separated and described better)
+```{r}
+df.horse$avg_speed <- df.horse$dist_m / df.horse$secs
+hist(df.horse$avg_speed)
+
+ggplot(df.horse, aes(x = avg_speed, fill = type)) +
+  geom_histogram(position = "identity", alpha = 0.5, bins = 30) +
+  labs(title = "Distribution of Avg Speed by Race Type",
+       x = "Average Speed (m/s)", y = "Count") +
+  theme_minimal()
+
+# Exclude 'flat' races
+df.horse_no_flat <- df.horse %>% filter(type != "Flat")
+
+# Histogram of avg_speed, excluding flat races
+ggplot(df.horse_no_flat, aes(x = avg_speed, fill = type)) +
+  geom_histogram(position = "identity", alpha = 0.5, bins = 30) +
+  labs(title = "Distribution of Avg Speed by Race Type (Excluding Flat)",
+       x = "Average Speed (m/s)", y = "Count") +
+  theme_minimal()
+```
+
+Do the same for the Rating features, and possibly combine the as they are probably co linear.
+```{r}
+# check the same for official rating (or) and racingpost rating (rpr)
+
+df.horse$or_num <- as.numeric(as.character(df.horse$or))
+df.horse[is.na(as.integer(df.horse$or_num)), ]$or
+
+df.horse$rpr_num <- as.numeric(as.character(df.horse$rpr))
+df.horse[is.na(as.integer(df.horse$rpr_num)), ]$rpr
+
+
+```
+20% of horses have no official rating and 2% have no rp rating. Plot rpr vs or
+```{r}
+plot(or_num ~ rpr_num, data = df.horse,
+     main = "or against rpr")
+
+cor(df.horse$or_num, df.horse$rpr_num, use = "complete.obs")
+
+cor(df.horse$or_num, df.horse$avg_speed, use = "complete.obs")
+cor(df.horse$rpr_num, df.horse$avg_speed, use = "complete.obs")
+
+
+plot(avg_speed ~ rpr_num, data = df.horse,
+     main = "avg_speed against rpr")
+
+plot(avg_speed ~ or_num, data = df.horse,
+     main = "avg_speed against or")
+
+
+# Define a function to calculate correlation for each type
+calculate_correlations <- function(type_filter) {
+  subset_data <- df.horse %>% filter(type == type_filter)
+  
+  # Check if sufficient data exists for correlation
+  if (sum(complete.cases(subset_data$or_num, subset_data$avg_speed)) > 1) {
+    or_avg_speed_corr <- cor(subset_data$or_num, subset_data$avg_speed, use = "complete.obs")
+  } else {
+    or_avg_speed_corr <- NA
+  }
+  
+  if (sum(complete.cases(subset_data$rpr_num, subset_data$avg_speed)) > 1) {
+    rpr_avg_speed_corr <- cor(subset_data$rpr_num, subset_data$avg_speed, use = "complete.obs")
+  } else {
+    rpr_avg_speed_corr <- NA
+  }
+  
+  return(data.frame(
+    Type = type_filter,
+    OR_AvgSpeed_Corr = or_avg_speed_corr,
+    RPR_AvgSpeed_Corr = rpr_avg_speed_corr
+  ))
+}
+
+# Calculate correlations for each type
+correlations <- do.call(rbind, lapply(c("Flat", "Hurdle", "Chase", "NH Flat"), calculate_correlations))
+
+# Print the results
+print(correlations)
+
+```
+so it seems like rpr is a better predictor than or, however there are a few instances with missing values in rpr that have values in or.Linear Regression Imputation as it is straightforward and likely accurate given the correlation between rpr and or. However, if other variables that also strongly influence rpr, consider the multivariable regression approach.
+
+```{r}
+cor(df.horse$rpr_num, df.horse$Imp_Perc_PLACE, use = "complete.obs")
+cor(df.horse$rpr_num, df.horse$Imp_Perc_WIN, use = "complete.obs")
+
+```
+For now linear regression is used to take or and impute rpr, however if we have time we can est if multiple regression works better.
+
+```{r}
+# Step 1: Build a linear regression model using complete cases
+model <- lm(rpr_num ~ or_num, data = df.horse, na.action = na.omit)
+
+# Step 2: Predict missing rpr values using the model
+df.horse$rpr_num[is.na(df.horse$rpr_num)] <- predict(
+  model,
+  newdata = df.horse[is.na(df.horse$rpr_num), ]
+)
+
+# Step 3: Check the updated data frame
+summary(df.horse$rpr_num)
+```
+Now remove columns or, or_num, rpr and rows where rpr_num is NA
+```{r}
+# Step 1: Remove columns or, or_num, and rpr
+df.horse <- df.horse %>%
+  select(-or, -or_num, -rpr)
+
+# Step 2: Remove rows where rpr_num is NA
+df.horse <- df.horse %>%
+  filter(!is.na(rpr_num))
+
+# Step 3: Check the resulting data frame
+summary(df.horse)
+```
+
+
 Convert all characters to factors:
 ```{r}
 # Convert all character columns to factors
@@ -258,6 +379,10 @@ str(df.horse)
 ```{r}
 # remove helper variable, won't need it anymore
 df.horse <- subset(df.horse, select=-secs_num)
+
+# Rename rpr_num to rpr
+df.horse <- df.horse %>% rename(rpr = rpr_num)
+
 # check if it worked
 colnames(df.horse)
 ```
@@ -283,7 +408,7 @@ Create also a binary variable for sex. Let's keep both variables because the 6 d
 
 
 ```{r}
-# Rename the original varialbe
+# Rename the original variable
 df.horse$sex_6 <- df.horse$sex
 # Drop old sex column
 df.horse <- subset(df.horse, select=-sex)
@@ -291,6 +416,25 @@ df.horse <- subset(df.horse, select=-sex)
 df.horse$sex <- ifelse(df.horse$sex_6 %in% c("G", "C", "H", "R"), "M", "F")
 # Convert to factor
 df.horse$sex <- as.factor(df.horse$sex)
+```
+
+Lets create another feature, previous_finish which looks at the previous date the horse ran, then divide that pos column by ran column and multiply that result by 10.
+
+```{r}
+# Create the previous_finish feature
+df.horse <- df.horse %>%
+  arrange(horse, date) %>%  # Sort by horse and date
+  group_by(horse) %>%       # Group by horse
+  mutate(
+    previous_pos = lag(pos),        # Get the position of the previous race
+    previous_ran = lag(ran),        # Get the number of runners in the previous race
+    previous_finish = ifelse(
+      !is.na(previous_pos) & !is.na(previous_ran), 
+      (as.numeric(previous_pos) / as.numeric(previous_ran)) * 10, 
+      NA
+    )
+  ) %>%
+  ungroup()  # Remove grouping
 ```
 
 - SHOULD "WON" BE TURNED INTO A BOOLEAN? 
@@ -413,6 +557,9 @@ plot(log_dist_m ~ log_lbs, data = df.horse_sample,
 ```{r}
 plot(log_secs ~ log_dist_m, data = df.horse_sample,
      main = "Log time against log distance")
+
+plot(secs ~ dist_m, data = df.horse_sample,
+     main = "time against distance")
 ```
 
 The longer the distance the longer time it takes. 
